@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zalo - Trợ Lý An Toàn AI</title>
+    <title>Zalo - Trợ Lý An Toàn AI (Siêu Tốc)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root { --zalo-blue: #0068FF; --bg-gray: #F4F6F9; --danger-color: #DC2626; --safe-color: #166534; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -21,6 +20,7 @@
         .message { max-width: 92%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; position: relative; }
         .bot-msg { background-color: white; align-self: flex-start; color: #1E293B; border: 1px solid #E2E8F0; }
         .user-msg { background-color: #0068FF; color: white; align-self: flex-end; }
+        .preview-img { max-width: 100%; border-radius: 8px; margin-bottom: 6px; }
 
         .alert-card { border-radius: 10px; padding: 12px; margin-top: 6px; font-size: 13px; position: relative; }
         .alert-danger { background: #FEF2F2; color: #991B1B; border: 1px solid #FCA5A5; }
@@ -36,7 +36,7 @@
         .controls-bar { background: white; padding: 8px 12px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .mic-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: #64748B; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
         .mic-btn.recording { background: var(--danger-color); animation: pulse 1s infinite; }
-        .ocr-btn { background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .ocr-btn { background: #059669; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 
         .input-area { background: white; padding: 10px 12px; border-top: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 8px; }
         textarea { width: 100%; height: 50px; padding: 8px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 13px; resize: none; outline: none; }
@@ -61,29 +61,28 @@
 
     <div class="chat-body" id="chatBody">
         <div class="message bot-msg">
-            <b><i class="fa-solid fa-user-ninja"></i> Đặc vụ An ninh AI:</b> Xin chào! Tôi là Chuyên gia AI Phòng chống Lừa đảo & Thao túng Tâm lý. Hãy nhập tin nhắn, tải ảnh chụp hoặc dùng giọng nói để tôi phân tích giúp bạn!
+            <b><i class="fa-solid fa-user-ninja"></i> Đặc vụ An ninh AI:</b> Tôi là Chuyên gia AI Phòng chống Lừa đảo & Thao túng Tâm lý. Hãy gửi tin nhắn, thu âm hoặc <b>TẢI ẢNH</b> (màn hình tin nhắn, biên lai, giấy phạt) để tôi phân tích siêu tốc!
         </div>
     </div>
 
     <div class="controls-bar">
         <button id="micBtn" class="mic-btn" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i></button>
-        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="processImage(event)">
-        <button class="ocr-btn" onclick="document.getElementById('imageInput').click()"><i class="fa-solid fa-camera"></i> Quét ảnh</button>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        <button class="ocr-btn" onclick="document.getElementById('imageInput').click()"><i class="fa-solid fa-image"></i> Phân Tích Ảnh (Multimodal)</button>
     </div>
 
     <div class="input-area">
         <textarea id="userInput" placeholder="Nhập tin nhắn, đường link nghi ngờ hoặc thu âm..."></textarea>
-        <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-magnifying-glass"></i> KIỂM TRA NGAY</button>
+        <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-bolt"></i> PHÂN TÍCH SIÊU TỐC</button>
     </div>
 </div>
 
 <script>
     const GEMINI_API_KEY = "AIzaSyDncH9shvUk67SjDGi7CwK4Nvi7uQAqeTQ";
-
     let recognition = null;
     let isRecording = false;
 
-    // Khởi tạo Nhận diện Giọng nói (Speech-to-Text)
+    // Khởi tạo Speech Recognition
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
@@ -91,21 +90,16 @@
         recognition.continuous = false;
 
         recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById('userInput').value = transcript;
+            document.getElementById('userInput').value = event.results[0][0].transcript;
             toggleMic();
             sendMessage();
         };
-
         recognition.onerror = () => toggleMic();
         recognition.onend = () => { if(isRecording) toggleMic(); };
     }
 
     function toggleMic() {
-        if (!recognition) {
-            alert("Trình duyệt không hỗ trợ nhận diện giọng nói!");
-            return;
-        }
+        if (!recognition) return alert("Trình duyệt không hỗ trợ micro!");
         const micBtn = document.getElementById('micBtn');
         if (!isRecording) {
             recognition.start();
@@ -118,7 +112,6 @@
         }
     }
 
-    // Đọc văn bản thành tiếng (Text-to-Speech)
     function speakText(text) {
         window.speechSynthesis.cancel();
         const cleanText = text.replace(/[*#🚨🧠🛡️📞]/g, '');
@@ -128,98 +121,69 @@
         window.speechSynthesis.speak(utterance);
     }
 
-    async function sendMessage() {
+    const SYSTEM_PROMPT = `Bạn là Chuyên gia AI Phòng chống Tội phạm Công nghệ cao & Thao túng Tâm lý.
+Hãy phân tích nội dung (văn bản hoặc hình ảnh) do người dùng cung cấp và trả lời chính xác theo 4 mục chuẩn sau:
+
+🚨 1. ĐÁNH GIÁ MỨC ĐỘ RỦI RO: [X%] - [CẢNH BÁO ĐỎ / NGHỜ VẤN / AN TOÀN]
+
+🧠 2. MÃ HÓA THỦ ĐOẠN & BẪY TÂM LÝ:
+- Kịch bản lừa đảo: (Chỉ ra thủ đoạn như giả danh Công an, phạt nguội, phạt BHXH, dụ bấm link, gọi lại SĐT lừa đảo)
+- Đòn thao túng tâm lý: (Chỉ ra cơ chế đe dọa, tạo áp lực thời gian gấp gáp, gây sợ hãi)
+
+🛡️ 3. HÀNH ĐỘNG KHẨN CẤP (PHÁC ĐỒ "3 KHÔNG"):
+- Thực hiện "3 phút im lặng" - Tắt máy ngay lập tức.
+- Tuyệt đối KHÔNG gọi lại SĐT trên tin nhắn, KHÔNG chuyển tiền, KHÔNG đọc OTP/bấm link.
+
+📞 4. KÊNH THÔNG TIN CHÍNH THỐNG:
+- Lời đáp trả/Cắt đuôi an toàn: Mẫu câu ngắn để dứt khoát ngắt liên lạc.
+- Hotline xác minh chính thống: Tổng đài BHXH (1900.9068) hoặc Công an Xã/Phường địa phương.`;
+
+    async function sendMessage(base64Image = null) {
         const input = document.getElementById('userInput');
         const text = input.value.trim();
-        if (!text) return;
+        if (!text && !base64Image) return;
 
         const chatBody = document.getElementById('chatBody');
-        chatBody.innerHTML += `<div class="message user-msg">${text}</div>`;
+
+        // Hiển thị Tin nhắn người dùng
+        let userContent = text;
+        if (base64Image) {
+            userContent = `<img src="${base64Image}" class="preview-img"><br>` + (text || "Phân tích hình ảnh này giúp tôi!");
+        }
+        chatBody.innerHTML += `<div class="message user-msg">${userContent}</div>`;
         input.value = '';
         chatBody.scrollTop = chatBody.scrollHeight;
 
+        // Loader
         const loadingId = 'loading-' + Date.now();
-        chatBody.innerHTML += `<div class="message bot-msg" id="${loadingId}"><i>🤖 Hệ thống Chuyên gia AI đang phân tích thủ đoạn & đòn thao túng...</i></div>`;
+        chatBody.innerHTML += `<div class="message bot-msg" id="${loadingId}"><i>⚡ AI Multimodal đang quét ảnh & phân tích siêu tốc...</i></div>`;
         chatBody.scrollTop = chatBody.scrollHeight;
+
+        // Chuẩn bị payload cho Gemini Multimodal API
+        let parts = [{ text: SYSTEM_PROMPT + "\n\nNội dung cần kiểm tra: " + text }];
+        if (base64Image) {
+            const base64Data = base64Image.split(',')[1];
+            parts.unshift({
+                inline_data: {
+                    mime_type: "image/png",
+                    data: base64Data
+                }
+            });
+        }
 
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `[VAI TRÒ VÀ TƯ DUY NỀN TẢNG]
-Bạn là Hệ thống Chuyên gia AI Cao cấp về Phòng chống Tội phạm Công nghệ cao và Thao túng Tâm lý, hoạt động với sự kết hợp của 3 vai trò:
-1. ĐẶC VỤ BỘ CÔNG AN / ĐIỀU TRA VIÊN: Nhận diện chính xác kịch bản lừa đảo, dấu hiệu giả mạo cơ quan nhà nước (Công an, BHXH, Y tế, Ngân hàng), nhận diện các phương thức công nghệ độc hại (Deepfake, Voice Cloning, link APK, Brandname giả).
-2. BÁC SĨ TÂM LÝ TỘI PHẠM: Giải mã các đòn thao túng tâm lý độc hại (kích hoạt vùng amygdala gây hoảng loạn, đánh vào bản năng bảo vệ con cháu, khai thác "khoảng trống cảm xúc" sự cô đơn, bẫy lòng tham/sức khỏe), giúp xoa dịu tâm lý hoảng hỏng của nạn nhân.
-3. CHUYÊN GIA TRUYỀN THÔNG VÀ TƯ VẤN GIA ĐÌNH: Đưa ra giải pháp phòng vệ ngắn gọn, dứt khoát, dễ hiểu đối với người cao tuổi và hướng dẫn con cháu cách ứng xử văn minh.
-
-[NHIỆM VỤ CHÍNH]
-Khi nhận được bất kỳ thông tin nào từ người dùng (kịch bản cuộc gọi, tin nhắn, hình ảnh, đường link, hoặc câu chuyện hoảng loạn của nạn nhân):
-1. Đánh giá Mức độ Rủi ro (Scale 0 - 100%).
-2. Giải mã Chiêu trò & Bẫy Tâm lý độc hại.
-3. Cung cấp Phác đồ Kỹ thuật "3 phút im lặng" & Hành động Khẩn cấp.
-4. Đưa ra Kịch bản Ứng phó / Lời khuyên cho Gia đình.
-
-[QUY TRÌNH PHÂN TÍCH VÀ ĐÁNH GIÁ (BẮT BUỘC)]
-
-Bước 1: NHẬN DIỆN MỨC ĐỘ RỦI RO
-- AN TOÀN (0% - 20%): Thông tin chuẩn mực, không có yếu tố hối thúc hay đòi hỏi tài chính/OTP.
-- CẦN THẬN TRỌNG / NGHỜ VẤN (30% - 60%): Cuộc gọi/tin nhắn từ số lạ, lời mời nhận quà 0đ, hội thảo mồi, yêu cầu cập nhật VNeID/BHXH.
-- BÁO ĐỘNG ĐỎ / NGUY HIỂM CỰC CAO (70% - 100%): Yêu cầu CHUYỂN TIỀN VÀO TÀI KHOẢN CÁ NHÂN, đọc OTP, dọa bắt giam/án tụng, báo tin con cháu cấp cứu, yêu cầu tải file APK hoặc bấm link lạ.
-
-Bước 2: BÓC TÁCH ĐÒN THAO TÚNG TÂM LÝ & KỊCH BẢN TỘI PHẠM
-Chỉ ra chính xác "vũ khí tâm lý" đối phương đang dùng:
-- Thao túng Quyền lực & Nỗi sợ: Giả danh Công an/VKS/BHXH, dọa rửa tiền, khóa thẻ, yêu cầu vào phòng kín cô lập.
-- Khai thác Tình thân & AI Deepfake: Giả giọng/hình ảnh con cháu bị tai nạn nguy cấp, chủ động làm tín hiệu "giật lag/mạng yếu" để che giấu lỗi AI.
-- Bẫy Tình cảm & Tặng quà (Romance Scam): Nhắn tin chăm sóc hàng ngày giải tỏa cô đơn, sau đó bắt nộp "phí thông quan/phí phạt".
-- Đánh vào Nhu cầu Sức khỏe & Lòng tham: Cò mồi hội thảo "thần dược", báo trúng thưởng bắt nộp thuế trước.
-
-Bước 3: PHÁC ĐỒ PHÒNG NGỪA KHẨN CẤP (QUY TẮC "3 KHÔNG - 3 PHÚT IM LẶNG")
-- Kỹ thuật "3 phút im lặng": Yêu cầu người dùng dừng lại 3 phút, hít thở sâu, hoặc đặt 1 câu hỏi bí mật gia đình để kích hoạt lại vùng vỏ não tiền trán (thoát trạng thái hoảng loạn do amygdala bị kích thích).
-- Thực hành "3 KHÔNG": KHÔNG TIN (Tắt máy/ngắt kết nối) - KHÔNG SỢ (Cơ quan nhà nước không làm việc qua điện thoại) - KHÔNG CHUYỂN TIỀN (Vào bất kỳ tài khoản cá nhân nào).
-
-[ĐỊNH DẠNG ĐẦU RA (OUTPUT FORMAT)]
-Nội dung phản hồi PHẢI trình bày mạch lạc, rõ ràng, giàu tính hành động:
-🚨 1. ĐÁNH GIÁ MỨC ĐỘ RỦI RO: [X%] - [CẢNH BÁO ĐỎ / NGHỜ VẤN / AN TOÀN]
-
-🧠 2. MÃ HÓA THỦ ĐOẠN & BẪY TÂM LÝ:
-- Kịch bản lừa đảo: (Mô tả thủ đoạn đối phương đang dùng)
-- Đòn thao túng tâm lý: (Chỉ ra cơ chế gây sợ hãi/gấp gáp/đánh vào tình thân)
-
-🛡️ 3. HÀNH ĐỘNG KHẨN CẤP (PHÁC ĐỒ "3 KHÔNG"):
-- [Kỹ thuật 3 phút im lặng / Tắt máy ngay lập tức]
-- [Tuyệt đối KHÔNG đọc OTP / KHÔNG chuyển tiền vào tài khoản cá nhân]
-- [Gọi lại xác minh qua SĐT thường dùng của người thân hoặc đường dây nóng]
-
-📞 4. KÊNH THÔNG TIN CHÍNH THỐNG & KỊCH BẢN ỨNG PHÓ:
-- Lời đáp trả/Cắt đuôi an toàn: (Mẫu câu ngắn để cúp máy ngay)
-- Đường dây nóng hỗ trợ:
-  + Tổng đài BHXH Việt Nam: 1900.9068 (Khi gặp sự cố BHXH/BHYT)
-  + Công an Xã/Phường địa phương hoặc Hotline An ninh mạng.
-- Lời khuyên cho Con Cháu (nếu có): (Cài xác thực sinh trắc học, đặt mật mã gia đình, an ủi tránh trách móc nạn nhân).
-
-[TONE & STYLE]
-- Nghiêm túc, đĩnh đạc, bản lĩnh (như Đặc vụ điều tra).
-- Thấu hiểu, điềm tĩnh, trấn an mạnh mẽ (như Bác sĩ tâm lý).
-- Ngôn từ trực diện, rõ ràng, dễ đọc với người cao tuổi, prioritize dùng biểu tượng trực quan.
-
----
-DƯỚI ĐÂY LÀ THÔNG TIN TỪ NGƯỜI DÙNG CẦN PHÂN TÍCH:
-"${text}"`
-                        }]
-                    }]
-                })
+                body: JSON.stringify({ contents: [{ parts: parts }] })
             });
 
             const data = await response.json();
             if (data.candidates && data.candidates[0].content.parts[0].text) {
                 const rawText = data.candidates[0].content.parts[0].text;
 
-                // Trích xuất điểm rủi ro
                 const scoreMatch = rawText.match(/(\d+)%/);
-                const score = scoreMatch ? parseInt(scoreMatch[1]) : (rawText.includes("BÁO ĐỘNG ĐỎ") || rawText.includes("CẢNH BÁO ĐỎ") ? 90 : 15);
+                const score = scoreMatch ? parseInt(scoreMatch[1]) : (rawText.includes("CẢNH BÁO ĐỎ") ? 90 : 20);
 
                 let alertClass = score >= 50 ? 'alert-danger' : 'alert-safe';
                 let fillColor = score >= 50 ? '#DC2626' : '#166534';
@@ -231,45 +195,36 @@ DƯỚI ĐÂY LÀ THÔNG TIN TỪ NGƯỜI DÙNG CẦN PHÂN TÍCH:
                         ${rawText.replace(/\n/g, '<br>')}
                         <div class="action-bar">
                             <button class="action-btn" onclick="speakText(\`${rawText.replace(/[`"'\\]/g, '')}\`)"><i class="fa-solid fa-volume-high"></i> Nghe đọc</button>
-                            <button class="action-btn" onclick="navigator.clipboard.writeText(\`${rawText.replace(/[`"'\\]/g, '')}\`); alert('Đã sao chép báo cáo cảnh báo!');"><i class="fa-solid fa-share-nodes"></i> Chia sẻ</button>
+                            <button class="action-btn" onclick="navigator.clipboard.writeText(\`${rawText.replace(/[`"'\\]/g, '')}\`); alert('Đã sao chép!');"><i class="fa-solid fa-share-nodes"></i> Chia sẻ</button>
                         </div>
                     </div>`;
 
                 document.getElementById(loadingId).innerHTML = alertBox;
-                saveHistory(text, score);
                 speakText(rawText);
             }
         } catch (error) {
             console.error(error);
-            document.getElementById(loadingId).innerHTML = `<div class="alert-card alert-danger">❌ Lỗi kết nối AI hoặc API Key không khả dụng!</div>`;
+            document.getElementById(loadingId).innerHTML = `<div class="alert-card alert-danger">❌ Lỗi kết nối AI! Vui lòng kiểm tra API Key hoặc mạng.</div>`;
         }
         chatBody.scrollTop = chatBody.scrollHeight;
     }
 
-    async function processImage(e) {
+    // Xử lý gửi ảnh trực tiếp dưới dạng Base64
+    function handleImageUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
-        const inputArea = document.getElementById('userInput');
-        inputArea.value = "⏳ Đang quét bóc tách chữ từ hình ảnh...";
 
-        try {
-            const result = await Tesseract.recognize(file, 'vie');
-            inputArea.value = result.data.text.trim();
-        } catch (err) {
-            inputArea.value = "";
-            alert("❌ Không thể trích xuất chữ từ ảnh này!");
-        }
-    }
-
-    function saveHistory(msg, score) {
-        let history = JSON.parse(localStorage.getItem('scam_history') || '[]');
-        history.push({ msg, score, time: new Date().toLocaleTimeString() });
-        localStorage.setItem('scam_history', JSON.stringify(history));
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            const base64Image = event.target.result;
+            sendMessage(base64Image);
+        };
+        reader.readAsDataURL(file);
     }
 
     function reportScam() {
-        const phone = prompt("Nhập số điện thoại/Tài khoản ngân hàng lừa đảo:");
-        if (phone) alert(`✅ Đã ghi nhận báo cáo đối tượng [${phone}] gửi về Cơ quan An ninh mạng!`);
+        const phone = prompt("Nhập số điện thoại/STK lừa đảo:");
+        if (phone) alert(`✅ Đã ghi nhận báo cáo [${phone}]!`);
     }
 </script>
 </body>
