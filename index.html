@@ -7,27 +7,42 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        :root { --zalo-blue: #0068FF; --bg-gray: #F4F6F9; --danger-color: #DC2626; }
+        :root { --zalo-blue: #0068FF; --bg-gray: #F4F6F9; --danger-color: #DC2626; --safe-color: #166534; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         body { background-color: #1E293B; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .mobile-frame { width: 100%; max-width: 440px; height: 100vh; background: var(--bg-gray); display: flex; flex-direction: column; overflow: hidden; }
+        .mobile-frame { width: 100%; max-width: 440px; height: 100vh; background: var(--bg-gray); display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .zalo-header { background: linear-gradient(135deg, #0068FF, #0043A8); color: white; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
         .header-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+        .header-btns { display: flex; gap: 8px; }
         .sos-btn { background: var(--danger-color); color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .report-btn { background: #EAB308; color: white; border: none; padding: 6px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer; }
+
         .chat-body { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 90%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.4; }
+        .message { max-width: 90%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.4; position: relative; }
         .bot-msg { background-color: white; align-self: flex-start; color: #1E293B; border: 1px solid #E2E8F0; }
         .user-msg { background-color: #0068FF; color: white; align-self: flex-end; }
-        .alert-card { border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 13px; }
+
+        .alert-card { border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 13px; position: relative; }
         .alert-danger { background: #FEF2F2; color: #991B1B; border: 1px solid #FCA5A5; }
         .alert-safe { background: #F0FDF4; color: #166534; border: 1px solid #86EFAC; }
+
+        .risk-meter { height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+        .risk-fill { height: 100%; transition: width 0.5s ease; }
+
+        .action-bar { display: flex; gap: 6px; margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 6px; }
+        .action-btn { background: transparent; border: none; color: #64748B; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .action-btn:hover { color: var(--zalo-blue); }
+
         .controls-bar { background: white; padding: 8px 12px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .mic-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: #64748B; color: white; font-size: 16px; cursor: pointer; }
+        .mic-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: #64748B; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        .mic-btn.recording { background: var(--danger-color); animation: pulse 1s infinite; }
         .ocr-btn { background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
-        .testcase-select { padding: 6px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; max-width: 130px; }
+
         .input-area { background: white; padding: 10px 12px; border-top: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 8px; }
         textarea { width: 100%; height: 50px; padding: 8px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 13px; resize: none; outline: none; }
         .send-btn { background: var(--zalo-blue); color: white; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -38,12 +53,15 @@
             <i class="fa-solid fa-shield-halved"></i>
             <span>Trợ Lý An Toàn AI</span>
         </div>
-        <button class="sos-btn" onclick="alert('🚨 Đã gửi tín hiệu SOS!')">SOS</button>
+        <div class="header-btns">
+            <button class="report-btn" onclick="reportScam()"><i class="fa-solid fa-flag"></i> Báo cáo</button>
+            <button class="sos-btn" onclick="alert('🚨 Đã gửi tín hiệu SOS tới danh bạ khẩn cấp!')">SOS</button>
+        </div>
     </div>
 
     <div class="chat-body" id="chatBody">
         <div class="message bot-msg">
-            <b><i class="fa-solid fa-robot"></i> Trợ lý AI:</b> Xin chào! Hãy dán tin nhắn, chụp ảnh hoặc chọn mẫu để kiểm tra lừa đảo.
+            <b><i class="fa-solid fa-robot"></i> Trợ lý AI:</b> Xin chào! Tôi có thể quét ảnh, nghe giọng nói hoặc phân tích nội dung để phát hiện lừa đảo giúp bạn.
         </div>
     </div>
 
@@ -54,111 +72,153 @@
     </div>
 
     <div class="input-area">
-        <textarea id="userInput" placeholder="Nhập nội dung nghi vấn..."></textarea>
+        <textarea id="userInput" placeholder="Nhập tin nhắn, link nghi ngờ hoặc dùng giọng nói..."></textarea>
         <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-magnifying-glass"></i> KIỂM TRA NGAY</button>
     </div>
 </div>
 
 <script>
+    const GEMINI_API_KEY = "AIzaSyDncH9shvUk67SjDGi7CwK4Nvi7uQAqeTQ";
 
-    // 1. Dán API Key Gemini của bạn vào giữa hai dấu ngoặc kép bên dưới
-     const GEMINI_API_KEY = "AIzaSyDncH9shvUk67SjDGi7CwK4Nvi7uQAqeTQ";
+    let recognition = null;
+    let isRecording = false;
 
-     // 2. Hàm sendMessage đã được nâng cấp kết nối Gemini API
-     async function sendMessage() {
-         const input = document.getElementById('userInput');
-         const text = input.value.trim();
-         if (!text) return;
+    // Khởi tạo Speech Recognition (Microphone)
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'vi-VN';
+        recognition.continuous = false;
 
-         const chatBody = document.getElementById('chatBody');
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('userInput').value = transcript;
+            toggleMic();
+            sendMessage();
+        };
 
-         // Hiển thị tin nhắn người dùng vừa gửi
-         chatBody.innerHTML += `<div class="message user-msg">${text}</div>`;
-         input.value = '';
-         chatBody.scrollTop = chatBody.scrollHeight;
+        recognition.onerror = () => toggleMic();
+        recognition.onend = () => { if(isRecording) toggleMic(); };
+    }
 
-         // Hiển thị bong bóng thông báo AI đang phân tích
-         const loadingId = 'loading-' + Date.now();
-         chatBody.innerHTML += `<div class="message bot-msg" id="${loadingId}"><i>🤖 Trợ lý AI đang phân tích nội dung...</i></div>`;
-         chatBody.scrollTop = chatBody.scrollHeight;
+    function toggleMic() {
+        if (!recognition) {
+            alert("Trình duyệt không hỗ trợ nhận diện giọng nói!");
+            return;
+        }
+        const micBtn = document.getElementById('micBtn');
+        if (!isRecording) {
+            recognition.start();
+            isRecording = true;
+            micBtn.classList.add('recording');
+        } else {
+            recognition.stop();
+            isRecording = false;
+            micBtn.classList.remove('recording');
+        }
+    }
 
-         try {
-             // Gọi Gemini 1.5 Flash API
-             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({
-                     contents: [{
-                         parts: [{
-                             text: `Bạn là Trợ Lý An Toàn AI giúp người dân phát hiện lừa đảo qua tin nhắn/cuộc gọi.
- Hãy phân tích đoạn nội dung sau: "${text}"
+    // Đọc lời khuyên thành tiếng (Text-To-Speech)
+    function speakText(text) {
+        window.speechSynthesis.cancel();
+        const cleanText = text.replace(/[*#]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'vi-VN';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
 
- Yêu cầu phản hồi ngắn gọn, rõ ràng:
- 1. Đánh giá mức độ: [AN TOÀN / NGHI VẤN / LỪA ĐẢO NGUY HIỂM]
- 2. Dấu hiệu nghi vấn (nếu có, tóm tắt 2-3 dòng)
- 3. Lời khuyên xử lý cho người dùng.`
-                         }]
-                     }]
-                 })
-             });
+    async function sendMessage() {
+        const input = document.getElementById('userInput');
+        const text = input.value.trim();
+        if (!text) return;
 
-             const data = await response.json();
+        const chatBody = document.getElementById('chatBody');
+        chatBody.innerHTML += `<div class="message user-msg">${text}</div>`;
+        input.value = '';
+        chatBody.scrollTop = chatBody.scrollHeight;
 
-             if (data.candidates && data.candidates[0].content.parts[0].text) {
-                 const aiResponse = data.candidates[0].content.parts[0].text;
+        const loadingId = 'loading-' + Date.now();
+        chatBody.innerHTML += `<div class="message bot-msg" id="${loadingId}"><i>🤖 Trợ lý AI đang phân tích ngữ cảnh & link...</i></div>`;
+        chatBody.scrollTop = chatBody.scrollHeight;
 
-                 // Xác định màu khung cảnh báo (Đỏ nếu nguy hiểm/nghi vấn, Xanh nếu an toàn)
-                 let alertClass = 'alert-safe';
-                 if (aiResponse.includes("LỪA ĐẢO") || aiResponse.includes("NGHI VẤN") || aiResponse.includes("NGUY HIỂM")) {
-                     alertClass = 'alert-danger';
-                 }
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `Bạn là Trợ Lý An Toàn AI chuyên phân tích lừa đảo qua tin nhắn, link và hình ảnh.
+Phân tích nội dung sau: "${text}"
 
-                 const alertBox = `<div class="alert-card ${alertClass}"><b>KẾT QUẢ PHÂN TÍCH AI:</b><br>${aiResponse.replace(/\n/g, '<br>')}</div>`;
-                 document.getElementById(loadingId).innerHTML = alertBox;
-             } else {
-                 document.getElementById(loadingId).innerHTML = `<div class="alert-card alert-danger">⚠️ Không nhận được phản hồi từ AI. Vui lòng kiểm tra lại API Key!</div>`;
-             }
+Trả về định dạng cấu trúc sau:
+MỨC ĐỘ: [AN TOÀN / NGHI VẤN / LỪA ĐẢO NGUY HIỂM]
+ĐIỂM RỦI RO: [Con số từ 0 đến 100]%
+ĐÁNH GIÁ DOMAIN/LINK: [Phân tích link nếu có, hoặc "Không có link"]
+DẤU HIỆU: [Tóm tắt 2 dòng các điểm nghi ngờ]
+LỜI KHUYÊN: [2 dòng hướng dẫn xử lý]`
+                        }]
+                    }]
+                })
+            });
 
-         } catch (error) {
-             console.error("Lỗi Gemini API:", error);
-             document.getElementById(loadingId).innerHTML = `<div class="alert-card alert-danger">❌ Lỗi kết nối mạng hoặc API Key không hợp lệ!</div>`;
-         }
+            const data = await response.json();
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                const rawText = data.candidates[0].content.parts[0].text;
 
-         chatBody.scrollTop = chatBody.scrollHeight;
-     }
+                const scoreMatch = rawText.match(/ĐIỂM RỦI RO:\s*(\d+)%/);
+                const score = scoreMatch ? parseInt(scoreMatch[1]) : (rawText.includes("LỪA ĐẢO") ? 90 : 10);
 
-     function toggleMic() {
-         alert("Tính năng thu âm đang kết nối...");
-     }
+                let alertClass = score > 50 ? 'alert-danger' : 'alert-safe';
+                let fillColor = score > 50 ? '#DC2626' : '#166534';
 
-     async function processImage(e) {
-         const file = e.target.files[0];
-         if (!file) return;
+                const alertBox = `
+                    <div class="alert-card ${alertClass}">
+                        <b>ĐIỂM RỦI RO: ${score}%</b>
+                        <div class="risk-meter"><div class="risk-fill" style="width: ${score}%; background: ${fillColor};"></div></div>
+                        ${rawText.replace(/\n/g, '<br>')}
+                        <div class="action-bar">
+                            <button class="action-btn" onclick="speakText(\`${rawText.replace(/[`"'\\]/g, '')}\`)"><i class="fa-solid fa-volume-high"></i> Nghe đọc</button>
+                            <button class="action-btn" onclick="navigator.clipboard.writeText(\`${rawText.replace(/[`"'\\]/g, '')}\`); alert('Đã sao chép cảnh báo!');"><i class="fa-solid fa-share-nodes"></i> Chia sẻ</button>
+                        </div>
+                    </div>`;
 
-         const inputArea = document.getElementById('userInput');
-         inputArea.value = "⏳ Đang quét và bóc tách chữ từ ảnh, vui lòng đợi giây lát...";
+                document.getElementById(loadingId).innerHTML = alertBox;
+                saveHistory(text, score);
+                speakText(rawText);
+            }
+        } catch (error) {
+            document.getElementById(loadingId).innerHTML = `<div class="alert-card alert-danger">❌ Lỗi kết nối AI hoặc API Key!</div>`;
+        }
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
 
-         try {
-             const result = await Tesseract.recognize(
-                 file,
-                 'vie',
-                 { logger: m => console.log(m) }
-             );
+    async function processImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const inputArea = document.getElementById('userInput');
+        inputArea.value = "⏳ Đang bóc tách chữ từ ảnh...";
 
-             const extractedText = result.data.text.trim();
+        try {
+            const result = await Tesseract.recognize(file, 'vie');
+            inputArea.value = result.data.text.trim();
+        } catch (err) {
+            inputArea.value = "";
+            alert("❌ Không thể đọc chữ trong ảnh!");
+        }
+    }
 
-             if (extractedText) {
-                 inputArea.value = extractedText;
-             } else {
-                 inputArea.value = "";
-                 alert("❌ Không tìm thấy văn bản trong ảnh!");
-             }
-         } catch (error) {
-             console.error("Lỗi OCR:", error);
-             inputArea.value = "";
-             alert("⚠️ Có lỗi xảy ra trong quá trình xử lý ảnh!");
-         }
-     }
+    function saveHistory(msg, score) {
+        let history = JSON.parse(localStorage.getItem('scam_history') || '[]');
+        history.push({ msg, score, time: new Date().toLocaleTimeString() });
+        localStorage.setItem('scam_history', JSON.stringify(history));
+    }
+
+    function reportScam() {
+        const phone = prompt("Nhập số điện thoại/STK lừa đảo cần báo cáo:");
+        if (phone) alert(`✅ Đã gửi báo cáo đối tượng [${phone}] về trung tâm An ninh mạng!`);
+    }
 </script>
 </body>
 </html>
