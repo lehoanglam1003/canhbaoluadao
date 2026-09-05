@@ -49,12 +49,6 @@
 
     <div class="controls-bar">
         <button id="micBtn" class="mic-btn" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i></button>
-        <select class="testcase-select" onchange="loadTest(this.value)">
-            <option value="">-- Mẫu thử --</option>
-            <option value="R1">1. Dọa khóa SIM</option>
-            <option value="R2">2. Báo con cấp cứu</option>
-            <option value="S1">3. Mã OTP Ngân hàng</option>
-        </select>
         <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="processImage(event)">
         <button class="ocr-btn" onclick="document.getElementById('imageInput').click()"><i class="fa-solid fa-camera"></i> Quét ảnh</button>
     </div>
@@ -66,15 +60,6 @@
 </div>
 
 <script>
-    const testCases = {
-        "R1": "TB: So thue bao cua ban se bi khoa sau 2 gio do chua chuan hoa TTI. Truy cap http://sim-chuanhoa.com ngay.",
-        "R2": "Cháu là thầy giáo, con anh đang cấp cứu tại bệnh viện. Chuyển gấp 20 triệu vào STK 1029384756 để mổ gấp!",
-        "S1": "Ma OTP cua ban la 849201 de xac thuc giao dich 250.000 VND. Tuyet doi khong chia se ma nay."
-    };
-
-    function loadTest(key) {
-        if (testCases[key]) document.getElementById('userInput').value = testCases[key];
-    }
 
     async function sendMessage() {
         const input = document.getElementById('userInput');
@@ -106,10 +91,35 @@
     }
 
     async function processImage(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        alert("Đang phân tích ảnh...");
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const inputArea = document.getElementById('userInput');
+    inputArea.value = "⏳ Đang quét và bóc tách chữ từ ảnh, vui lòng đợi giây lát...";
+
+    try {
+        // Sử dụng Tesseract.js để đọc chữ Tiếng Việt từ file ảnh
+        const result = await Tesseract.recognize(
+            file,
+            'vie', // Ngôn ngữ Tiếng Việt
+            { logger: m => console.log(m) }
+        );
+
+        const extractedText = result.data.text.trim();
+
+        if (extractedText) {
+            // Tự động dán chữ vừa quét từ ảnh vào ô nhập
+            inputArea.value = extractedText;
+        } else {
+            inputArea.value = "";
+            alert("❌ Không tìm thấy văn bản trong ảnh!");
+        }
+    } catch (error) {
+        console.error("Lỗi OCR:", error);
+        inputArea.value = "";
+        alert("⚠️ Có lỗi xảy ra trong quá trình xử lý ảnh!");
     }
+}
 </script>
 </body>
 </html>
